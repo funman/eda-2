@@ -31,6 +31,7 @@ void load_file(const string& filename, uint32_t address) {
   string data;
   if(!file_to_string(filename, &data)) {
     LOG << "File read error" << endl;
+    return;
   }
   INFO << "file read, " << data.size() << endl;
   m->AllocateSegment(address, data.size());
