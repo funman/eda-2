@@ -7,7 +7,7 @@
 #define EDA_UTIL_H_
 
 #include <iostream>
-#include <string>
+#include <cstring>
 
 namespace eda {
 

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include "data_atomic.h"
+#include "data.h"
 
 namespace eda {
 
@@ -60,7 +60,7 @@ void Changelist::SerializeToXML(ostringstream& out) {
   out << "</changes>";
   out << "<reads>";
   for (vector<Address*>::iterator it = read_.begin(); it != read_.end(); ++it) {
-    out << "<address>" << it->get_name() << "</address>";
+    out << "<address>" << (*it)->get_name() << "</address>";
   }
   out << "</reads>";
   out << "</changelist>";

@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <cstdlib>
 
 #include "util.h"
 #include "data.h"
@@ -59,7 +60,7 @@ int eda::find_matching(const std::string& s, int start, char open, char close) {
 
 void eda::SerializeToXML(ostringstream& out, const vector<int>& v, string name, string item) {
   out << "<" << name << ">";
-  for (int i = 0; i < v.length(); i++) {
+  for (int i = 0; i < v.size(); i++) {
     out << "<" << item << ">";
 
     out << "</" << item << ">";
