@@ -63,13 +63,13 @@ int main(int argc, char* argv[]) {
   while (1) {
     string cmd;
     cout << "EDA> ";
-    getline(cin, cmd);
+    if(!getline(cin, cmd)) break;
 
     if(cmd.substr(0,2) == "cl") {
       StatelessChangelist statelesscl;
       while (1) {
         cout << "cl> ";
-        getline(cin, cmd);
+        if(!getline(cin, cmd)) break;
         if(cmd == "") break;
         string ls = cmd.substr(0, cmd.find_first_of('='));
         string rs = cmd.substr(cmd.find_first_of('=')+1);
@@ -172,4 +172,6 @@ int main(int argc, char* argv[]) {
       cout << std::hex << "0x" << output << endl;
     }
   }
+
+  return 0;
 }
