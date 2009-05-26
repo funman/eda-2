@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
   //INFO << "got PC" << endl;
   PC->set32(1, 0x400008);
 
-  Address* next_disassembly_address;
+  Address* next_disassembly_address = NULL;
 
   while (1) {
     string cmd;
@@ -135,6 +135,7 @@ int main(int argc, char* argv[]) {
       else {
         a = next_disassembly_address;
       }
+      if(!a) continue;
       next_disassembly_address = iarm.Process(a);
       cout << a->get_name() << endl;
       DebugPrint(a->get_instruction()->parsed_);
