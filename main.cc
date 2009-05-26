@@ -88,6 +88,10 @@ int main(int argc, char* argv[]) {
 
       while(1) {
         a = m->ResolveToAddress(0, "[`PC`]-8");   // hardcoded for now
+        if(!a) {
+          cout << "*******NEXT ADDRESS UNKNOWN" << endl;
+          break;
+        }
         if(a->get_instruction() == NULL) {
           next_disassembly_address = iarm.Process(a);
         } //else
