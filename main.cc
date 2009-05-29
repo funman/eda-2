@@ -25,11 +25,12 @@
 using namespace std;
 using namespace eda;
 
-void load_file(Memory *m, ChangelistFactory *cf, Address* me, const string& filename, uint32_t address) {
+static bool load_file(Memory *m, ChangelistFactory *cf, Address* me, const string& filename, uint32_t address) {
   LOG(INFO) << "loading file, " << filename;
   string data;
   if(!file_to_string(filename, &data)) {
-    LOG(WARNING) << "File read error";
+    LOG(ERROR) << "File read error";
+    return false;
   }
   LOG(INFO) << "file read, " << data.size();
   m->AllocateSegment(address, data.size());
@@ -38,6 +39,8 @@ void load_file(Memory *m, ChangelistFactory *cf, Address* me, const string& file
   LOG(INFO) << "changelist " << c->get_changelist_number() << " created, "<< c->get_size();
   m->Commit(c);
   LOG(INFO) << "committed";
+
+  return true;
 }
 
 Servlet<FactoryOwner> s;
@@ -57,7 +60,8 @@ int main(int argc, char* argv[]) {
 #endif
 
   Address* me = f.memory_.AllocateSegment("me", 4);   // Create the `me` address, 4 is just to prevent crashing
-  load_file(&f.memory_, &f.changelist_factory_, me, "bootrom", 0x400000);
+  if(!load_file(&f.memory_, &f.changelist_factory_, me, "bootrom", 0x400000))
+    return 1;
 
   Address* PC = f.memory_.ResolveToAddress(0,"`PC`");
   PC->set32(1, 0x400008);
@@ -82,7 +86,8 @@ int frontend_console() {
   cf = new ChangelistFactory();
   m = new Memory();
   me = m->AllocateSegment("me", 4);   // Create the `me` address, 4 is just to prevent crashing
-  load_file(m, cf, me, "bootrom", 0x400000);
+  if(!load_file(m, cf, me, "bootrom", 0x400000))
+    return 1;
 
   m->AllocateSegment(0xf4300000, 0x100);
   m->AllocateSegment(0xf4400000, 0x100);
