@@ -57,7 +57,7 @@ void StringSplit(const char* a, const std::string& in, std::vector<std::string>*
 
 #define INFO 0
 #define WARNING 1
-//#define ERROR 2
+#define ERROR 2
 
 class Logging {
 public:
