@@ -15,10 +15,25 @@ using namespace std;
 
 using namespace eda;
 
+typedef void (*ARMCoProcessorInterface) (short rd, short crn, short crm, short opcode1, short opcode2, StatelessChangelist* change);
+
+class ARMCoProcessor {
+public:
+  ARMCoProcessor(  ARMCoProcessorInterface MoveToARM_fn,
+                        ARMCoProcessorInterface MoveFromARM_fn,
+                        ARMCoProcessorInterface DataProcess_fn);
+  ARMCoProcessorInterface MoveToARM;
+  ARMCoProcessorInterface MoveFromARM;
+  ARMCoProcessorInterface DataProcess;
+};
+
 class InstructionFactoryARM : public InstructionFactory {
 public:
+  InstructionFactoryARM(void);
   Address* Process(Address* start);
   void InitRegisters(Memory* m);
+private:
+  ARMCoProcessor *coprocessors[16];
 };
 
 namespace ARM {
@@ -79,7 +94,7 @@ const int opcodes_flags[16] = {
 
 const string shifts_absolute[4] = { "<<", ">>", ">>>", ">/>" };
 
-const string coprocessors[16] = { "P0", "P1", "P2", "P3", "P4", "P5", "P6",
+const string coprocessors_name[16] = { "P0", "P1", "P2", "P3", "P4", "P5", "P6",
                 "P7", "P8", "P9", "P10", "P11", "P12", "P13", "P14", "P15" };
 
 const string cp_registers[16] = { "C0", "C1", "C2", "C3", "C4", "C5", "C6",

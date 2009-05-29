@@ -16,6 +16,28 @@ using namespace eda;
 
 using namespace ARM;
 
+//CoProcessors
+ARMCoProcessor::ARMCoProcessor( ARMCoProcessorInterface MoveToARM_fn,
+                                ARMCoProcessorInterface MoveFromARM_fn,
+                                ARMCoProcessorInterface DataProcess_fn) {
+    MoveToARM   = MoveToARM_fn;
+    MoveFromARM = MoveFromARM_fn;
+    DataProcess = DataProcess_fn;
+}
+
+static void absent_cp_fn(short rd, short crn, short crm, short opcode1, short opcode2, StatelessChangelist* change)
+{
+    /* TODO : undefined instruction */
+}
+
+ARMCoProcessor coprocessor_absent(absent_cp_fn, absent_cp_fn, absent_cp_fn);
+
+InstructionFactoryARM::InstructionFactoryARM(void) {
+  /* TODO : CP15 */
+  for (int i = 0; i < 16; i++)
+    coprocessors[i] = &coprocessor_absent;
+}
+
 void InstructionFactoryARM::InitRegisters(Memory* m) {
   for (int i = 0; i < 18; i++)
     m->AllocateSegment(registers[i], 4);
@@ -280,6 +302,7 @@ Address* InstructionFactoryARM::Process(Address* start) {
       // CoProcessor data processing & register transfers
       bool cp_register_transfers = (opcode >> 4) & 1;
       short crm = opcode & 0xf;
+      short crn = (opcode >> 16) & 0xf;
       short cp_num = (opcode >> 8) & 0xf;
       short from_cp = (opcode >> 20) & 1; // MCR or MRC
       short cp_opcode_1 = cp_register_transfers ?
@@ -299,13 +322,23 @@ Address* InstructionFactoryARM::Process(Address* start) {
       args.push_back(cp_instruction);
 
       if(!cp_v2) args.push_back(condXX);
-      args.push_back(coprocessors[cp_num]);
+      args.push_back(coprocessors_name[cp_num]);
       args.push_back(immed(cp_opcode_1));
       args.push_back(Rd);
-      args.push_back(cp_registers[(opcode >> 16) & 0xF]);
+      args.push_back(cp_registers[crn]);
       args.push_back(cp_registers[crm]);
       if(!cp_register_transfers || (cp_opcode_2 != 0))
         args.push_back(immed(cp_opcode_2));
+
+      if(cp_register_transfers) {
+        if(from_cp) {
+          coprocessors[cp_num]->MoveToARM((opcode >> 12) & 0xf, crn, crm, cp_opcode_1, cp_opcode_2, change);
+        } else {
+          coprocessors[cp_num]->MoveFromARM((opcode >> 12) & 0xf, crn, crm, cp_opcode_1, cp_opcode_2, change);
+        }
+      } else {
+        coprocessors[cp_num]->DataProcess((opcode >> 12) & 0xf, crn, crm, cp_opcode_1, cp_opcode_2, change);
+      }
       break;
   }
 
