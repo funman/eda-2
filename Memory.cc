@@ -20,6 +20,7 @@ Address* Memory::AllocateSegment(uint32_t address_32, int length) {
     ostringstream name;
     name << "unk_" << hex << (address_32+l);
     (*ts)[l]->set_name(name.str());
+    named_.insert(make_pair(name.str(), (*ts)[l]));
   }
 
   space_.insert(make_pair(address_32, ts));
@@ -121,7 +122,7 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
           operate = true;
         }
         else {
-          LOG << "memory not found: " << stateless.substr(string_location+1, next_string_location-string_location-1) << endl;
+          LOG(INFO) << "memory not found: " << stateless.substr(string_location+1, next_string_location-string_location-1);
           error = true;
         }
         break;
@@ -132,7 +133,7 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
         break;
       case '`':
         // This can't resolve addresses
-        LOG << "can't resolve addresses" << endl;
+        LOG(WARNING) << "can't resolve addresses";
         error = true;
         break;
       case '+': oper = OPER_ADD; break;
@@ -150,7 +151,7 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
           oper = OPER_EQU;
           break;
         } else {
-          LOG << "unknown operator" << endl;
+          LOG(WARNING) << "unknown operator";
           error = true;
           break;
         }
@@ -191,7 +192,7 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
         }
         else {
           error = true;
-          LOG << "bad character" << endl;
+          LOG(WARNING) << "bad character";
         }
         break;
     }
@@ -230,7 +231,7 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
     string_location = next_string_location+1;
   }
   if(error == true) {
-    LOG << "Error in parser: " << stateless << "[" << string_location << "]" << endl;
+    LOG(WARNING) << "Error in parser: " << stateless << "[" << string_location << "]";
   }
   //INFO << "got " << std::hex << retval << endl;
   return retval;
@@ -249,7 +250,7 @@ Address* Memory::ResolveToAddress(int changelist_number, const string& stateless
 //This is the commit function
 //Add History functionality, and do it soon
 void Memory::Commit(Changelist* c) {
-  INFO << "commiting: " << c->get_changelist_number() << endl;
+  LOG(INFO) << "commiting: " << c->get_changelist_number();
   ChangelistIterator it;
   if(!c->get_first_change(&it)) return;
   do {

@@ -15,9 +15,12 @@ SET(EDA_SRCS
 ./debug.cc
 ./History.cc
 ./ParsedInstruction.cc
+./Servlet.cc
+./FactoryOwner.cc
+./File.cc
 )
 #INCLUDE_DIRECTORIES(./include/)
 ADD_LIBRARY(eda_lib ${EDA_SRCS})
 ADD_EXECUTABLE(eda main.cc)
-TARGET_LINK_LIBRARIES(eda eda_lib)
+TARGET_LINK_LIBRARIES(eda eda_lib wsock32)
 
