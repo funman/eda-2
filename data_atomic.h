@@ -24,6 +24,9 @@ namespace eda {
 
 class Address;    // Can't actually call address
 
+class JSON;
+
+//                                           LHS     Condition    Bytes Value
 #define StatelessChangelistIterator map<pair<string, string>, pair<int, string> >::iterator
 
 // This is a changelist that is "position independent" and "state independent"
@@ -31,6 +34,7 @@ class Address;    // Can't actually call address
 // A StatelessData is now a string
 class StatelessChangelist {
 public:
+  StatelessChangelist() {}
   // This adds an assignment of the form
   // if(rhs.first)
   //   (lhs.second)lhs.first = rhs.second;
@@ -42,7 +46,9 @@ public:
   bool get_next_change(StatelessChangelistIterator* a);
   int get_size();
   void SerializeToXML(ostringstream& out);
-private:
+  void SerializeToJSON(JSON* json);
+//private:
+  // int is bytecount, not bitcount
   map<pair<string, string>, pair<int, string> > changes_;
 };
 
@@ -71,6 +77,7 @@ public:
   bool get_next_change(ChangelistIterator* a);
 
   void SerializeToXML(ostringstream& out);
+  void SerializeToJSON(JSON* json);
 private:
   // This is every change the changelist makes
   // Addresses are stored in their pointer form so no moving or renaming
@@ -93,14 +100,25 @@ class ParsedInstruction {
 public:
   // Is this valid c++?
   // Should be like printf for strings
+  ParsedInstruction() {
+    format_ = "";
+    Init();
+  }
+  ParsedInstruction(Address* parent) : parent_(parent) {
+    format_ = "";
+    Init();
+  }
+  void Init();
   ParsedInstruction(const string& format, const vector<string>& args) : format_(format), args_(args) {}
   void SerializeToXML(ostringstream& out);
+  void SerializeToJSON(JSON* json);
   string GetConsoleString();
-private:
-// It'd be sweet if this was a string with formatting
   string format_;
   vector<string> args_;
+private:
+// It'd be sweet if this was a string with formatting
   static map<char, string> web_lookup_;
+  Address* parent_;
 };
 
 }

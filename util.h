@@ -14,12 +14,20 @@
 #include <sstream>
 
 namespace eda {
+  
+class Address;
 
 const std::string kXMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 #ifdef WIN32
 const std::string kDataDirectory = "..\\eda-2\\Data\\";
 #else
-const std::string kDataDirectory = "../eda-2/Data/";
+const std::string kDataDirectory = "../../../eda-2/Data/";
+#endif
+
+#ifdef WIN32
+const std::string kBaseDirectory = "..\\eda-2\\";
+#else
+const std::string kBaseDirectory = "../../../eda-2/";
 #endif
 
 // Returns things like 9 and 0x4F
@@ -35,9 +43,12 @@ bool file_to_string(const std::string& filename, std::string* out);
 
 int find_matching(const std::string& s, int start, char open, char close);
 
+std::vector<int> FetchGAIsFromAddresses(const std::vector<Address*>& a);
+  
 void SerializeToXML(std::ostringstream& out, const std::vector<int>* v, std::string name, std::string item);
 
 void StringSplit(const char* a, const std::string& in, std::vector<std::string>* argv);
+void StringSplit(char a, const std::string& in, std::vector<std::string>* argv);
 
 // LOG(INFO)
 // LOG(ERROR)
@@ -57,18 +68,23 @@ void StringSplit(const char* a, const std::string& in, std::vector<std::string>*
 
 #define INFO 0
 #define WARNING 1
+#define DEBUG 3
+#ifndef WIN32
+// This is a problem on windows
 #define ERROR 2
+#endif
 
 class Logging {
 public:
   Logging(int level, const char* file, const char* pretty_function, const char* function, int line_number);
   ~Logging() {
     // Is the .str needed?
-    std::cout << stream_.str() << std::endl;
+    //std::cout << stream_.str() << std::endl;
+    std::cout << std::endl;
   }
-  std::ostream& stream() { return stream_; }
-private:
-  std::ostringstream stream_;
+  std::ostream& stream() { return std::cout; } //return stream_; }
+//private:
+  //std::ostringstream stream_;
 };
 
 //inline uint32_t rol(uint32_t data, int len);

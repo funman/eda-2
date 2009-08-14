@@ -8,27 +8,38 @@ function send_request() {
     var xml = ret.html.substr(38);
     //document.getElementById("response").value = xml;
     //alert(ret.xml.documentElement);
-    document.getElementById("response").value = view_xml(ret.xml.documentElement, 0);
+    if(ret.xml == null)
+      document.getElementById("response").value = xml;
+    else
+      document.getElementById("response").value = view_xml(ret.xml.documentElement, 0);
 
   } else
     document.getElementById("response").value = ret.html;
 }
 
 function send_reg_request() {
-  var registers = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","SP","LR","PC"];
+  /*var registers = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","SP","LR","PC","CPSR"];
   var out = "";
   for(r in registers) {
     var ret = xx("EVAL", "[`"+registers[r]+"`]", "");
     out += registers[r]+": "+ret.html+"<br/>";
   }
+  document.getElementById("registers").innerHTML=out;*/
+  var out = "";
+  var registers = xx("READ","/State","").xml.documentElement.getElementsByTagName("registers")[0];
+  for(r in registers.childNodes) {
+    if(registers.childNodes[r].childNodes != null)
+      out += registers.childNodes[r].nodeName+": "+registers.childNodes[r].childNodes[0].nodeValue+"<br/>";
+  }
   document.getElementById("registers").innerHTML=out;
 }
 
 function send_step_request() {
-  var ret = xx("STEP", "Address/[`PC`]-8", "");
+  var ret2 = xx("READ", "/Address/[`PC`]-4/Instruction/Parsed", "");
+
+  var ret = xx("STEP", "/Address/[`PC`]-4", "");
   document.getElementById("response").value = view_xml(ret.xml.documentElement, 0);
 
-  var ret2 = xx("READ", "Address/[`PC`]-8/Instruction/Parsed", "");
   document.getElementById("rendered").innerHTML += '<span class="address">'+ret.xml.getElementsByTagName("owner")[0].childNodes[0].nodeValue+": "+'</span>';
   document.getElementById("rendered").innerHTML += ParsedInstructionToHTML(ret2.xml.documentElement);
 
@@ -37,9 +48,9 @@ function send_step_request() {
 
 function view_xml(element, depth) {
   if(element.nodeName == null) return "";
-  if(element.nodeName == "parsedinstruction") {
+  /*if(element.nodeName == "ParsedInstruction") {
     document.getElementById("rendered").innerHTML += ParsedInstructionToHTML(element);
-  }
+  }*/
   var i;
   var ret = "";
   for(i = 0; i < depth; i++) ret += " ";

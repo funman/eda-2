@@ -11,6 +11,14 @@
 
 namespace eda {
 
+void Memory::Rename(Address* address, const string& name) {
+  if(address->get_name().length() != 0) {
+    named_.erase(named_.find(address->get_name()));
+  }
+  address->set_name(name);
+  named_.insert(make_pair(name, address));
+}
+
 Address* Memory::AllocateSegment(uint32_t address_32, int length) {
   vector<Address*>* ts = AllocateSegment(length);
 
@@ -20,6 +28,7 @@ Address* Memory::AllocateSegment(uint32_t address_32, int length) {
     ostringstream name;
     name << "unk_" << hex << (address_32+l);
     (*ts)[l]->set_name(name.str());
+    (*ts)[l]->set_location(address_32+l);
     named_.insert(make_pair(name.str(), (*ts)[l]));
   }
 
@@ -35,10 +44,11 @@ Address* Memory::AllocateSegment(const string& name, int length) {
 }
 
 vector<Address*>* Memory::AllocateSegment(int length) {
+  LOG(DEBUG) << "allocating segment of size " << length;
   vector<Address*>* ts = new vector<Address*>(length);
 
   for (int l = 0; l < length; l++) {
-    (*ts)[l] = new Address();
+    (*ts)[l] = new Address(this);
   }
 
   // Setup the next pointers
@@ -84,7 +94,8 @@ enum {
   OPER_NOT,
   OPER_EQU,
   OPER_GT,
-  OPER_LT
+  OPER_LT,
+  OPER_IF
 };
 
 // Recursive function for resolving stateless strings
@@ -145,6 +156,8 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
       case '|': oper = OPER_ORR; break;
       case '^': oper = OPER_XOR; break;
       case '~': oper = OPER_NOT; break;
+
+      case '?': oper = OPER_IF; break;
 
       case '=':
         if(stateless[++next_string_location] == '=') {
@@ -211,6 +224,8 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
         case OPER_XOR: retval^=lastval; break;
         case OPER_NOT: retval=~lastval; break;
 
+        case OPER_IF: if(retval) { retval = lastval; } break;
+
         // 1 is equal
         // 0 if not equal
         case OPER_EQU: retval=(uint32_t)(retval==lastval); break;
@@ -232,6 +247,7 @@ uint32_t Memory::ResolveToNumber(int changelist_number, const string& stateless)
   }
   if(error == true) {
     LOG(WARNING) << "Error in parser: " << stateless << "[" << string_location << "]";
+    return 0xFFFFFFF;
   }
   //INFO << "got " << std::hex << retval << endl;
   return retval;
@@ -250,9 +266,16 @@ Address* Memory::ResolveToAddress(int changelist_number, const string& stateless
 //This is the commit function
 //Add History functionality, and do it soon
 void Memory::Commit(Changelist* c) {
+  if(c == 0) {
+    LOG(INFO) << "can't check in null changelist";
+    return;
+  }
   LOG(INFO) << "commiting: " << c->get_changelist_number();
   ChangelistIterator it;
-  if(!c->get_first_change(&it)) return;
+  if(!c->get_first_change(&it)) {
+    LOG(INFO) << "can't check in empty changelist";
+    return;
+  }
   do {
     //INFO << "committing: " << it->second << endl;
     // OMG, History code

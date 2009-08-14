@@ -32,6 +32,19 @@ public:
   InstructionFactoryARM(void);
   Address* Process(Address* start);
   void InitRegisters(Memory* m);
+
+  void StateToXML(std::ostringstream& out);
+  // Convert raw register to real instruction pointer
+  uint32_t TranslateToProgramCounter(uint32_t in) {
+    // ARM PC is 8 ahead of the real program counter
+    return in-8;
+  }
+
+  uint32_t TranslateFromProgramCounter(uint32_t in) {
+    // ARM PC is 8 ahead of the real program counter
+    return in+8;
+  }
+
 private:
   ARMCoProcessor *coprocessors[16];
 };
@@ -69,6 +82,8 @@ const string conditions_absolute[16] = {
   N+"^"+V,
   //GT, Z clear and either N set and V set or N clear and V clear
   "~"+Z+"&~("+N+"^"+V+")",
+  //LE, Z set and either N set and V clear or N set and V clear
+  Z+"|("+N+"^"+V+")",
   "1",
   "1"
 };
@@ -79,7 +94,7 @@ const string opcodes_absolute[16] = {
 // NF is no first(Rn)
 //AND XOR SUB RSB    ADD ADC SBC  RSC   TST TEQ CMP CMN ORR MOV BIC  MVN
 //                        C   C    C    NS  NS  NS  NS      NF       NF
-  "&","^","-","*-1+","+","+","-","*-1+","&","^","-","+","|","", "&~","~"
+  "&(","^(","-(","*-1+(","+(","+(","-(","*-1+(","&(","^(","-(","+(","|(","(", "&(~","(~"
 };
 
 #define F_C 1

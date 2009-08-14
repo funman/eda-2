@@ -21,6 +21,9 @@
 
 #include "InstructionFactoryARM.h"
 
+#include "InstructionFactoryISDF.h"
+
+#include "JSON.h"
 
 using namespace std;
 using namespace eda;
@@ -44,33 +47,92 @@ static bool load_file(Memory *m, ChangelistFactory *cf, Address* me, const strin
 }
 
 Servlet<FactoryOwner> s;
-FactoryOwner f;
 
 void quitproc(int a) {
-  LOG(INFO) << "Exitting normally";
+  LOG(INFO) << "Exiting normally";
   s.EndServer();
-  return;
+  exit(0);
 }
 
 int main(int argc, char* argv[]) {
+  LOG(INFO) << "eda started";
+  
+  
+  /*JSON test;
+  
+  test.add("hello", 1);
+  test.add("goodbye", "world");
+  
+  vector<int> a;
+  a.push_back(1);
+  a.push_back(2);
+  
+  test.add("arr", a);
+  
+  LOG(INFO) << test.serialize();
+  
+  return 0;*/
+  
+  //LOG(INFO) << "Servlet constructed";
+  FactoryOwner f;
+  LOG(INFO) << "FactoryOwner constructed";
 #ifndef WIN32
   signal(SIGHUP, quitproc);
   signal(SIGINT, quitproc);
   signal(SIGQUIT, quitproc);
 #endif
-
+  LOG(INFO) << "exit signals registered";
   Address* me = f.memory_.AllocateSegment("me", 4);   // Create the `me` address, 4 is just to prevent crashing
-  if(!load_file(&f.memory_, &f.changelist_factory_, me, "bootrom", 0x400000))
-    return 1;
+  
+  LOG(INFO) << "me address allocated";
+  /*Address* test = f.memory_.AllocateSegment("test", 8);
+  test->set32(1, 0x465E);
+  InstructionFactoryISDF a("thumb.isdf", &f.memory_);
+  a.Process(test);*/
 
-  Address* PC = f.memory_.ResolveToAddress(0,"`PC`");
-  PC->set32(1, 0x400008);
 
+  load_file(&f.memory_, &f.changelist_factory_, me, "bootrom", 0x400000);
+  //load_file(&f.memory_, &f.changelist_factory_, me, "ibec.dfu", 0x18000000);
+
+  //f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x1800F99C);
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x400024);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x400020);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  /*f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x40001C);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));*/
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x400018);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x400014);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x400010);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x40000C);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  f.memory_.ResolveToAddress(0,"`PC`")->set32(1, 0x400008);
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 8"));
+  
+  /*f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x400004"));
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x400008"));
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x40000C"));
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x400010"));
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x400014"));
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x400018"));
+  f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "0x40001C"));*/
+  //f.instruction_factory_->FastAnalyse(&f.memory_, f.memory_.ResolveToAddress(0, "[`PC`] - 4"));
+
+  f.memory_.AllocateSegment(0, 0x40000);
+
+  f.memory_.ResolveToAddress(0,"`SP`")->set32(1, 0x10000);
+
+  f.memory_.AllocateSegment(0xf4300000, 0x100);
+  f.memory_.AllocateSegment(0xf4400000, 0x100);
 
   s.RegisterCommandHandler("GET", &f, &FactoryOwner::HandleGetRequest);
   s.RegisterCommandHandler("EVAL", &f, &FactoryOwner::HandleEvalRequest);
   s.RegisterCommandHandler("READ", &f, &FactoryOwner::HandleReadRequest);
   s.RegisterCommandHandler("STEP", &f, &FactoryOwner::HandleStepRequest);
+  s.RegisterCommandHandler("RENAME", &f, &FactoryOwner::HandleRenameRequest);
   s.RegisterCommandHandler("DISASSEMBLE", &f, &FactoryOwner::HandleDisassembleRequest);
   s.StartServer(8080);
 
@@ -97,7 +159,7 @@ int frontend_console() {
   Address* PC = m->ResolveToAddress(0,"`PC`");
 
   //INFO << "got PC" << endl;
-  PC->set32(1, 0x400008);
+  PC->set32(1, 0x1800F99C);
 
   Address* next_disassembly_address = NULL;
 

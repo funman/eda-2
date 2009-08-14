@@ -40,7 +40,29 @@ InstructionFactoryARM::InstructionFactoryARM(void) {
 
 void InstructionFactoryARM::InitRegisters(Memory* m) {
   for (int i = 0; i < 18; i++)
-    m->AllocateSegment(registers[i], 4);
+    registers_.push_back(make_pair(registers[i], m->AllocateSegment(registers[i], 4)));
+  program_counter_ = m->get_address_by_name("PC");
+  link_register_ = m->get_address_by_name("LR");
+  stack_pointer_ = m->get_address_by_name("SP");
+}
+
+// Could go in InstructionFactory
+void InstructionFactoryARM::StateToXML(std::ostringstream& out) {
+  out << std::hex;
+  out << "<Core>";
+  out << "<ProgramCounter>" << GetProgramCounter() << "</ProgramCounter>";
+  //out << "<LinkRegister>" << GetLinkRegister() << "</LinkRegister>";
+  out << "<StackPointer>" << GetStackPointer() << "</StackPointer>";
+  out << "<registers>";
+
+  for(vector<pair<string, Address*> >::iterator it = registers_.begin(); it!=registers_.end(); ++it) {
+    uint32_t data;
+    it->second->get32(0, &data);
+    out << "<" << it->first << ">" << data << "</" << it->first << ">";
+  }
+
+  out << "</registers>";
+  out << "</Core>";
 }
 
 // I think this is my fifth one of these...haha
@@ -65,9 +87,11 @@ Address* InstructionFactoryARM::Process(Address* start) {
   string Rm = registers[ (opcode >> 0) & 0xF ];
 
   // Extract immediate data
-  string immed24 =
-    immed_signed( ((opcode & 0x7FFFFF) << 2) - ((opcode & 0x800000)?0x2000000:0) );
-  string immed12 = immed(opcode & 0xFFF);
+  int immed24_numeric = ((opcode & 0x7FFFFF) << 2) - ((opcode & 0x800000)?0x2000000:0);
+  string immed24 = immed_signed( immed24_numeric );
+
+  int immed12_numeric = opcode & 0xFFF;
+  string immed12 = immed( immed12_numeric );
 
   string immed8 = immed( ror( (opcode & 0xFF), ((opcode >> 8) & 0xF) * 2) );
 
@@ -127,6 +151,7 @@ Address* InstructionFactoryARM::Process(Address* start) {
   int reglist = opcode & 0xFFFF;
   int rnum = 0;
   int offset = 0;
+  uint32_t data;
 
   switch (cmdint) {
     case 0:   // DPIS + DPRS
@@ -169,6 +194,7 @@ Address* InstructionFactoryARM::Process(Address* start) {
         changesource += op;
         operand += immed8;
       }
+      operand += ")";
       if (!(opcodes_flags[opint] & F_NS)) { // If not No set
         change->add_change("`"+Rd+"`", cond, 4, changesource+operand);
       }
@@ -177,16 +203,16 @@ Address* InstructionFactoryARM::Process(Address* start) {
       //cout << "updateflags: " << updateflags << endl;
       if (updateflags) {
         string flags = "([`CPSR`] & 0x0FFFFFFF)";
-        flags += " | ((" + changesource + ") & 0x80000000)";   // N
-        flags += " | (((" + changesource + ")==0)<<30)";      // Z
+        flags += " | (((" + changesource + operand + ")) & 0x80000000)";   // N
+        flags += " | ((((" + changesource + operand + "))==0)<<30)";      // Z
         if (opint == 2 || opint == 6 | opint == 10) {  // SUB or SBC or CMP
-          flags += " | (([`"+Rn+"`] < " + operand +") << 29)";
+          flags += " | (([`"+Rn+"`] < (" + operand +") << 29)";
         }
         else if (opint == 3 || opint == 7) {  // RSB or RSC
-          flags += " | (([`"+Rn+"`] > " + operand +") << 29)";
+          flags += " | (([`"+Rn+"`] > (" + operand +") << 29)";
         }
         else if (opint == 4 || opint == 5 || opint == 11) {  // ADD, ADC, or CMN
-          flags += " | ((([`"+Rn+"`] >> 2) & ((" + operand + ") >> 2)) & 0x2000000)";
+          flags += " | ((([`"+Rn+"`] >> 2) & (((" + operand + ") >> 2)) & 0x2000000)";
         }
 
         // C is damn confusing
@@ -197,12 +223,17 @@ Address* InstructionFactoryARM::Process(Address* start) {
       break;
     case 2:   //LSIO
     case 3:   //LSRO
-      formatstring += "FOFC R, [R, ";
+      formatstring += "FOFC R, ";
       args.push_back(load?"LD":"ST");
       args.push_back("R");
       args.push_back(byte?"B":"");
       args.push_back(condXX);
       args.push_back(Rd);
+      if(preincrement)
+        formatstring += "[R, ";
+      else
+        formatstring += "[R], ";
+
       args.push_back(Rn);
 
       changesource = "[`"+Rn+"`]";
@@ -221,7 +252,18 @@ Address* InstructionFactoryARM::Process(Address* start) {
         else args.push_back("-"+immedshift);
         changesource += "[`"+Rm+"`]" + shift + immedshift;
       }
-      formatstring += "]";
+      if(preincrement)
+        formatstring += "]";
+
+      // Second PC Hack
+      // immed12 may not be the only choice
+      if(Rn == "PC" && start->memory_->get_address_by_location((start->get_location() + immed12_numeric + 8)) != NULL) {  // Shouldn't be a string compare
+        formatstring = "FOFC R, =I";
+        //LOG(INFO) << "location is " << std::hex << (start->get_location() + immed12_numeric + 8);
+        start->memory_->get_address_by_location((start->get_location() + immed12_numeric + 8))->get32(0, &data);
+        args[5] = immed(data);
+      }
+
       if(load) {
         if(byte) {
           change->add_change("`"+Rd+"`", cond, 1, "["+changesource+"]");
@@ -233,7 +275,12 @@ Address* InstructionFactoryARM::Process(Address* start) {
             change->add_change("`"+Rd+"`", cond, 4, "["+changesource+"]");
         }
       } else {  //store
-        change->add_change(changesource, cond, byte?1:4, "[`"+Rd+"`]");
+        if(preincrement) {
+          change->add_change(changesource, cond, byte?1:4, "[`"+Rd+"`]");
+        } else {
+          change->add_change("[`"+Rn+"`]", cond, byte?1:4, "[`"+Rd+"`]");
+          change->add_change("`"+Rn+"`", cond, byte?1:4, changesource);
+        }
       }
       break;
     case 4: //LSM
@@ -258,6 +305,8 @@ Address* InstructionFactoryARM::Process(Address* start) {
           args.push_back(registers[rnum]);
           if(load)
             change->add_change("`"+registers[rnum]+"`", cond,4, "[[`"+Rn+"`]+"+immed(offset)+"]");
+          else
+            change->add_change("[`"+Rn+"`]+"+immed(offset), cond, 4, "[`"+registers[rnum]+"`]");
           if (increment) offset += 4;
           else offset -= 4;
         }
@@ -278,12 +327,15 @@ Address* InstructionFactoryARM::Process(Address* start) {
       args.push_back("B");
       args.push_back(link?"L":"");
       args.push_back(condXX);
-      args.push_back(immed24);
+      //args.push_back(immed24);
+      // One PC Hack
+      args.push_back(immed(start->get_location() + immed24_numeric + 8));
 
       change->add_change("`PC`",  cond, 4, "[`PC`]+8+"+immed24);
       changedPC = true;
       if(link) {
         change->add_change("`LR`", cond, 4, "[`PC`]+4");
+        change->add_change("`PC`", "0", 4, "[`PC`]+4");   // Never actually happens, but you know, I'm hacking
       }
       break;
     case 6: // CoProcessor load/store & double register transfers

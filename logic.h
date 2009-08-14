@@ -21,12 +21,47 @@ class MemoryManager {
 class InstructionFactory {
 public:
   // Sets up the addresses of the registers
-  virtual void InitRegisters(Memory *m) = 0;
+  virtual void InitRegisters(Memory *m) { };
 
   // Parses an instruction
   // instruction should be null when passed in
   // Returns the address after the end of this instruction
   virtual Address* Process(Address* start) = 0;
+
+  virtual void StateToXML(std::ostringstream& out) { }
+
+  // This is the instruction that is currently running
+  virtual uint32_t GetProgramCounter() {
+    uint32_t ret;
+    program_counter_->get32(0, &ret);
+    return TranslateToProgramCounter(ret);
+  }
+
+  virtual uint32_t GetStackPointer() {
+    uint32_t ret;
+    stack_pointer_->get32(0, &ret);
+    return ret;
+  }
+
+  // This is extended for different archs to get the real program counter
+  virtual uint32_t TranslateToProgramCounter(uint32_t in) {
+    return in-program_counter_offset_;
+  }
+
+  virtual uint32_t TranslateFromProgramCounter(uint32_t in) {
+    return in+program_counter_offset_;
+  }
+
+  void FastAnalyse(Memory* m, Address* start);
+  void FastAnalyseRecurse(Memory* m, Address* location, Address* temp_program_counter, int* changelist_number);
+
+  Address* program_counter_;
+  Address* link_register_;
+  Address* stack_pointer_;
+  int program_counter_offset_;
+  vector<pair<std::string, Address*> > registers_;
+private:
+
 };
 
 // This creates changelists
@@ -40,6 +75,9 @@ public:
   // Used by the Core
   Changelist* CreateFromStatelessChangelist(Address* owner, StatelessChangelist& in,
                                      Memory* state);
+  inline int get_current_changelist_number() {
+    return current_changelist_number_;
+  }
 private:
   // This is incremented every time a changelist is created
   // It starts out at zero
