@@ -13,6 +13,7 @@
 #ifndef EDA_DATAATOMIC_H_
 #define EDA_DATAATOMIC_H_
 
+#include <stdint.h>
 #include <sstream>
 #include <string>
 #include <vector>

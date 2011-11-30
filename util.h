@@ -6,6 +6,8 @@
 #ifndef EDA_UTIL_H_
 #define EDA_UTIL_H_
 
+#include <cstdio>
+#include <stdint.h>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>

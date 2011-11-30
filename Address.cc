@@ -3,6 +3,7 @@
 // part of "The Embedded Disassembler"
 //  released under GPLv3, see http://gplv3.fsf.org/
 
+#include <stdint.h>
 #include "data.h"
 
 namespace eda {
