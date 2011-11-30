@@ -44,7 +44,6 @@ static bool load_file(Memory *m, ChangelistFactory *cf, Address* me, const strin
 }
 
 Servlet<FactoryOwner> s;
-FactoryOwner f;
 
 void quitproc(int a) {
   LOG(INFO) << "Exitting normally";
@@ -59,6 +58,7 @@ int main(int argc, char* argv[]) {
   signal(SIGQUIT, quitproc);
 #endif
 
+FactoryOwner f;
   Address* me = f.memory_.AllocateSegment("me", 4);   // Create the `me` address, 4 is just to prevent crashing
   if(!load_file(&f.memory_, &f.changelist_factory_, me, "bootrom", 0x400000))
     return 1;
